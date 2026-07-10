@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宠物领养管理系统 - API在线测试</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --amber: #F59E0B;
+      --coral: #FB7185;
+      --teal: #14B8A6;
+      --slate: #1E293B;
+      --cream: #FFF7ED;
+      --wood: #D4A574;
+      --bark: #8B5E3C;
+      --leaf: #84CC16;
+      --sky: #38BDF8;
+      --card-bg: #FFFFFF;
+      --radius: 20px;
+      --shadow: 0 4px 24px rgba(139,94,60,0.10), 0 1px 4px rgba(139,94,60,0.06);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+      background:
+        radial-gradient(ellipse 1200px 800px at 20% 0%, #FEF3C7 0%, transparent 60%),
+        radial-gradient(ellipse 1000px 700px at 80% 100%, #FFE4E6 0%, transparent 60%),
+        radial-gradient(ellipse 800px 600px at 50% 50%, #FFF7ED 0%, transparent 50%),
+        #FFFBF5;
+      min-height: 100vh;
+      padding: 30px 20px 60px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* 背景爪印装饰 */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(circle at 5% 15%, rgba(245,158,11,0.06) 0%, transparent 30%),
+        radial-gradient(circle at 90% 25%, rgba(251,113,133,0.05) 0%, transparent 25%),
+        radial-gradient(circle at 15% 85%, rgba(20,184,166,0.05) 0%, transparent 20%),
+        radial-gradient(circle at 85% 75%, rgba(139,94,60,0.04) 0%, transparent 28%);
+    }
+
+    /* 浮动爪印 */
+    .paw-bg {
+      position: fixed; pointer-events: none; z-index: 0;
+      font-size: 60px; opacity: 0.06;
+      animation: floatPaw 20s ease-in-out infinite;
+    }
+    .paw-bg:nth-child(1) { top: 10%; left: 3%; animation-delay: 0s; font-size: 50px; }
+    .paw-bg:nth-child(2) { top: 60%; left: 90%; animation-delay: -5s; font-size: 70px; }
+    .paw-bg:nth-child(3) { top: 85%; left: 10%; animation-delay: -10s; font-size: 45px; }
+    .paw-bg:nth-child(4) { top: 20%; left: 80%; animation-delay: -15s; font-size: 55px; }
+    @keyframes floatPaw {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-30px) rotate(5deg); }
+      50% { transform: translateY(-10px) rotate(-3deg); }
+      75% { transform: translateY(-40px) rotate(2deg); }
+    }
+
+    .container { max-width: 1050px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ===== 头部 ===== */
+    .header {
+      text-align: center; margin-bottom: 28px;
+    }
+    .header .logo {
+      display: inline-block; background: #FFF; border-radius: 50%;
+      width: 72px; height: 72px; line-height: 72px; font-size: 40px;
+      box-shadow: 0 8px 30px rgba(245,158,11,0.2);
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      font-size: 32px; font-weight: 800;
+      background: linear-gradient(135deg, var(--bark), var(--coral));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+    .header .subtitle {
+      color: #A8A29E; font-size: 14px; font-weight: 600; margin-top: 4px;
+    }
+
+    /* ===== 状态 + Token 卡片 ===== */
+    .top-row {
+      display: grid; grid-template-columns: auto 1fr; gap: 14px; margin-bottom: 22px;
+      align-items: center;
+    }
+    .status-card {
+      display: flex; align-items: center; gap: 10px;
+      background: #FFF; border-radius: 50px; padding: 12px 22px;
+      box-shadow: var(--shadow); white-space: nowrap;
+    }
+    .status-dot {
+      width: 14px; height: 14px; border-radius: 50%; background: #22C55E;
+      box-shadow: 0 0 12px rgba(34,197,94,0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(1.3);} }
+    .status-card span { font-weight: 700; color: var(--slate); font-size: 14px; }
+
+    .token-card {
+      display: flex; align-items: center; gap: 10px;
+      background: #FFF; border-radius: 50px; padding: 8px 8px 8px 20px;
+      box-shadow: var(--shadow);
+    }
+    .token-card label { font-weight: 700; color: var(--bark); font-size: 13px; white-space: nowrap; }
+    .token-card input {
+      flex: 1; border: none; background: #F8FAFC; border-radius: 30px;
+      padding: 9px 16px; font-size: 12px; font-family: 'SF Mono', 'Consolas', monospace;
+      color: var(--slate); outline: none; transition: all 0.3s;
+    }
+    .token-card input:focus { background: #FFF7ED; box-shadow: inset 0 0 0 2px var(--amber); }
+    .token-badge {
+      font-size: 11px; font-weight: 700; padding: 6px 16px; border-radius: 30px;
+      white-space: nowrap; letter-spacing: 0.5px; transition: all 0.3s;
+    }
+    .token-badge.ok { background: #DCFCE7; color: #166534; }
+    .token-badge.no { background: #FEE2E2; color: #991B1B; }
+
+    /* ===== 标签页导航 ===== */
+    .tabs {
+      display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .tab-btn {
+      padding: 10px 22px; border: none; border-radius: 50px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      background: #FFF; color: #78716C; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      transition: all 0.3s; font-family: inherit;
+    }
+    .tab-btn:hover { color: var(--bark); box-shadow: 0 4px 16px rgba(139,94,60,0.12); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--amber), var(--coral));
+      color: #FFF; box-shadow: 0 6px 20px rgba(245,158,11,0.3);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ===== 接口卡片 ===== */
+    .endpoint-card {
+      background: #FFF; border-radius: var(--radius); padding: 0;
+      margin-bottom: 16px; box-shadow: var(--shadow);
+      overflow: hidden; transition: all 0.3s ease;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .endpoint-card:hover { box-shadow: 0 8px 35px rgba(139,94,60,0.14); }
+
+    .ep-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 22px; cursor: pointer; user-select: none;
+      background: #FAFAFA; transition: background 0.2s;
+    }
+    .ep-header:hover { background: #FFF7ED; }
+    .ep-method {
+      padding: 5px 14px; border-radius: 20px; font-size: 11px;
+      font-weight: 800; color: #FFF; letter-spacing: 1px; text-transform: uppercase;
+      min-width: 56px; text-align: center;
+    }
+    .ep-method.post { background: linear-gradient(135deg, #22C55E, #16A34A); }
+    .ep-method.get { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+    .ep-method.delete { background: linear-gradient(135deg, #EF4444, #DC2626); }
+    .ep-path {
+      font-family: 'SF Mono', 'Consolas', monospace; font-size: 14px;
+      font-weight: 700; color: var(--slate);
+    }
+    .ep-desc { color: #A8A29E; font-size: 13px; margin-left: auto; font-weight: 600; }
+    .ep-arrow { color: #D4C8B8; font-size: 18px; transition: transform 0.3s; }
+    .endpoint-card.open .ep-arrow { transform: rotate(90deg); }
+
+    .ep-body { display: none; padding: 0 22px 20px; }
+    .endpoint-card.open .ep-body { display: block; }
+
+    .form-row {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label {
+      font-size: 11px; font-weight: 700; color: #A8A29E;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;
+    }
+    .form-group input, .form-group select {
+      padding: 10px 14px; border: 2px solid #F1F5F9; border-radius: 14px;
+      font-size: 13px; font-family: inherit; min-width: 110px;
+      background: #F8FAFC; transition: all 0.2s; color: var(--slate);
+    }
+    .form-group input:focus {
+      outline: none; border-color: var(--amber); background: #FFF;
+      box-shadow: 0 0 0 4px rgba(245,158,11,0.08);
+    }
+    .btn {
+      padding: 11px 24px; border: none; border-radius: 14px; cursor: pointer;
+      font-size: 13px; font-weight: 700; font-family: inherit;
+      color: #FFF; transition: all 0.25s; letter-spacing: 0.3px;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0); }
+    .btn.send {
+      background: linear-gradient(135deg, var(--amber), #F97316);
+      box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+    }
+    .btn.send:hover { box-shadow: 0 8px 24px rgba(245,158,11,0.45); }
+    .btn.danger {
+      background: linear-gradient(135deg, #EF4444, #B91C1C);
+      box-shadow: 0 4px 16px rgba(239,68,68,0.3);
+    }
+    .btn.danger:hover { box-shadow: 0 8px 24px rgba(239,68,68,0.45); }
+
+    /* 响应区 */
+    .resp {
+      margin-top: 14px; background: #1E293B; border-radius: 16px;
+      padding: 16px; font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 12px; max-height: 280px; overflow-y: auto; display: none;
+      position: relative;
+    }
+    .resp.show { display: block; animation: slideDown 0.3s ease; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .resp-bar {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .resp-code-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .rc-2xx { background: #22C55E; color: #FFF; }
+    .rc-400 { background: #F59E0B; color: #1E293B; }
+    .rc-401 { background: #F97316; color: #FFF; }
+    .rc-404 { background: #64748B; color: #FFF; }
+    .rc-500 { background: #EF4444; color: #FFF; }
+    .resp-time { color: #94A3B8; font-size: 11px; }
+    .resp pre { color: #E2E8F0; white-space: pre-wrap; word-break: break-all; margin: 0; line-height: 1.6; }
+    .resp .key { color: #7DD3FC; } .resp .str { color: #F9A8D4; } .resp .num { color: #A7F3D0; }
+    .resp-close {
+      position: absolute; top: 10px; right: 14px; background: none; border: none;
+      color: #94A3B8; cursor: pointer; font-size: 14px; font-weight: 700;
+    }
+    .resp-close:hover { color: #FFF; }
+
+    /* 宠物表格 */
+    .pet-table-wrap { margin-top: 12px; display: none; overflow-x: auto; }
+    .pet-table-wrap.show { display: block; animation: slideDown 0.3s ease; }
+    .pet-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .pet-table th {
+      background: linear-gradient(135deg, var(--amber), #F97316); color: #FFF;
+      padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .pet-table th:first-child { border-radius: 12px 0 0 0; }
+    .pet-table th:last-child { border-radius: 0 12px 0 0; }
+    .pet-table td { padding: 11px 14px; border-bottom: 1px solid #F1F5F9; color: var(--slate); }
+    .pet-table tbody tr { transition: background 0.2s; }
+    .pet-table tbody tr:hover { background: #FFF7ED; }
+    .pet-table tbody tr:last-child td:first-child { border-radius: 0 0 0 12px; }
+    .pet-table tbody tr:last-child td:last-child { border-radius: 0 0 12px 0; }
+
+    /* 页脚 */
+    .footer {
+      text-align: center; margin-top: 30px; color: #D4C8B8;
+      font-size: 12px; font-weight: 600;
+    }
+    .footer span { margin: 0 8px; }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .top-row { grid-template-columns: 1fr; }
+      .form-row { flex-direction: column; }
+      .form-group input { width: 100%; }
+      .ep-desc { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 背景爪印装饰 -->
+  <div class="paw-bg">🐾</div>
+  <div class="paw-bg">🐾</div>
+  <div class="paw-bg">🐾</div>
+  <div class="paw-bg">🐾</div>
+
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <div class="logo">🐕</div>
+      <h1>Pet Adoption API Hub</h1>
+      <p class="subtitle">宠物领养管理系统 · 在线调试平台</p>
+    </div>
+
+    <!-- 状态 + Token -->
+    <div class="top-row">
+      <div class="status-card">
+        <div class="status-dot"></div>
+        <span id="serverStatus">检测中...</span>
+      </div>
+      <div class="token-card">
+        <label>🔐 Token</label>
+        <input type="text" id="tokenInput" placeholder="登录后自动填充，或手动粘贴 JWT Token...">
+        <span class="token-badge no" id="tokenBadge">未设置</span>
+      </div>
+    </div>
+
+    <!-- 标签切换 -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('user')">👤 用户模块</button>
+      <button class="tab-btn" onclick="switchTab('pet')">🐱 宠物模块</button>
+    </div>
+
+    <!-- ==================== 用户模块 ==================== -->
+    <div class="tab-content active" id="tab-user">
+
+      <!-- 注册 -->
+      <div class="endpoint-card open">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method post">POST</span>
+          <span class="ep-path">/user/register</span>
+          <span class="ep-desc">新用户注册</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>👤 用户名</label><input type="text" id="reg_user" placeholder="至少3位字符"></div>
+            <div class="form-group"><label>🔒 密码</label><input type="password" id="reg_pwd" placeholder="输入密码"></div>
+            <button class="btn send" onclick="doRegister()">✨ 立即注册</button>
+          </div>
+          <div class="resp" id="resp-reg"><button class="resp-close" onclick="closeResp('resp-reg')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="reg-code"></span><span class="resp-time" id="reg-time"></span></div><pre id="reg-body"></pre></div>
+        </div>
+      </div>
+
+      <!-- 登录 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method post">POST</span>
+          <span class="ep-path">/user/login</span>
+          <span class="ep-desc">登录获取 Token</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>👤 用户名</label><input type="text" id="login_user" placeholder="已注册的用户名"></div>
+            <div class="form-group"><label>🔒 密码</label><input type="password" id="login_pwd" placeholder="输入密码"></div>
+            <button class="btn send" onclick="doLogin()">🔓 登录</button>
+          </div>
+          <div class="resp" id="resp-login"><button class="resp-close" onclick="closeResp('resp-login')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="login-code"></span><span class="resp-time" id="login-time"></span></div><pre id="login-body"></pre></div>
+        </div>
+      </div>
+
+      <!-- 获取用户信息 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method get">GET</span>
+          <span class="ep-path">/user/info</span>
+          <span class="ep-desc">查询用户详情</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>🆔 用户ID</label><input type="number" id="info_id" value="1" placeholder="用户ID"></div>
+            <button class="btn send" onclick="doGetUserInfo()">🔍 查询</button>
+          </div>
+          <div class="resp" id="resp-info"><button class="resp-close" onclick="closeResp('resp-info')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="info-code"></span><span class="resp-time" id="info-time"></span></div><pre id="info-body"></pre></div>
+        </div>
+      </div>
+
+      <!-- 删除用户 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method delete">DELETE</span>
+          <span class="ep-path">/user/delete</span>
+          <span class="ep-desc">删除用户账号</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>🆔 用户ID</label><input type="number" id="del_user_id" placeholder="要删除的用户ID"></div>
+            <button class="btn danger" onclick="doDeleteUser()">⚠️ 确认删除</button>
+          </div>
+          <div class="resp" id="resp-del-user"><button class="resp-close" onclick="closeResp('resp-del-user')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="del-user-code"></span><span class="resp-time" id="del-user-time"></span></div><pre id="del-user-body"></pre></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 宠物模块 ==================== -->
+    <div class="tab-content" id="tab-pet">
+
+      <!-- 添加宠物 -->
+      <div class="endpoint-card open">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method post">POST</span>
+          <span class="ep-path">/pet/add</span>
+          <span class="ep-desc">登记新宠物</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>🐾 分类</label><input type="text" id="pet_cat" placeholder="猫 / 狗 / 兔子..."></div>
+            <div class="form-group"><label>📛 名称</label><input type="text" id="pet_name" placeholder="宠物名字"></div>
+            <div class="form-group"><label>⚥ 性别</label><input type="text" id="pet_sex" placeholder="公 / 母"></div>
+            <div class="form-group"><label>📅 月龄</label><input type="number" id="pet_age" value="6" placeholder="月"></div>
+            <button class="btn send" onclick="doAddPet()">➕ 添加</button>
+          </div>
+          <div class="resp" id="resp-add-pet"><button class="resp-close" onclick="closeResp('resp-add-pet')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="add-pet-code"></span><span class="resp-time" id="add-pet-time"></span></div><pre id="add-pet-body"></pre></div>
+        </div>
+      </div>
+
+      <!-- 宠物列表 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method get">GET</span>
+          <span class="ep-path">/pet/list</span>
+          <span class="ep-desc">查看所有宠物</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <button class="btn send" onclick="doPetList()">📋 获取全部宠物</button>
+            <span style="color:#A8A29E;font-size:12px;align-self:center;font-weight:600;">需设置 Token</span>
+          </div>
+          <div class="resp" id="resp-pet-list"><button class="resp-close" onclick="closeResp('resp-pet-list')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="pet-list-code"></span><span class="resp-time" id="pet-list-time"></span></div><pre id="pet-list-body"></pre></div>
+          <div class="pet-table-wrap" id="petTableWrap">
+            <table class="pet-table">
+              <thead><tr><th>ID</th><th>🐾 分类</th><th>📛 名称</th><th>⚥ 性别</th><th>📅 月龄</th><th>🕐 登记时间</th></tr></thead>
+              <tbody id="petTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜索宠物 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method get">GET</span>
+          <span class="ep-path">/pet/search</span>
+          <span class="ep-desc">模糊搜索</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>🔎 关键字</label><input type="text" id="search_key" placeholder="搜索名称或分类..."></div>
+            <button class="btn send" onclick="doPetSearch()">🔎 搜索</button>
+          </div>
+          <div class="resp" id="resp-pet-search"><button class="resp-close" onclick="closeResp('resp-pet-search')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="pet-search-code"></span><span class="resp-time" id="pet-search-time"></span></div><pre id="pet-search-body"></pre></div>
+        </div>
+      </div>
+
+      <!-- 删除宠物 -->
+      <div class="endpoint-card">
+        <div class="ep-header" onclick="toggleCard(this)">
+          <span class="ep-method delete">DELETE</span>
+          <span class="ep-path">/pet/delete</span>
+          <span class="ep-desc">移除宠物记录</span>
+          <span class="ep-arrow">▶</span>
+        </div>
+        <div class="ep-body">
+          <div class="form-row">
+            <div class="form-group"><label>🆔 宠物ID</label><input type="number" id="del_pet_id" placeholder="要删除的宠物ID"></div>
+            <button class="btn danger" onclick="doDeletePet()">⚠️ 确认删除</button>
+          </div>
+          <div class="resp" id="resp-del-pet"><button class="resp-close" onclick="closeResp('resp-del-pet')">✕</button><div class="resp-bar"><span class="resp-code-badge" id="del-pet-code"></span><span class="resp-time" id="del-pet-time"></span></div><pre id="del-pet-body"></pre></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>🐾</span> Pet Adoption API v1.0 <span>🐾</span> Express + MySQL + JWT <span>🐾</span>
+    </div>
+  </div>
+
+  <script>
+    // ========== 标签切换 ==========
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    // ========== 卡片折叠 ==========
+    function toggleCard(header) {
+      header.parentElement.classList.toggle('open');
+    }
+    function ensureCardOpen(prefix) {
+      // 确保对应卡片展开
+      const area = document.getElementById('resp-' + prefix);
+      if (area) {
+        const card = area.closest('.endpoint-card');
+        if (card && !card.classList.contains('open')) {
+          card.classList.add('open');
+        }
+      }
+    }
+
+    // ========== 按钮 Loading ==========
+    function setBtnLoading(btn, loading) {
+      if (loading) {
+        btn._origText = btn.textContent;
+        btn.textContent = '⏳ 发送中...';
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'wait';
+      } else {
+        btn.textContent = btn._origText || btn.textContent;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    }
+
+    // ========== 工具函数 ==========
+    function getToken() { return document.getElementById('tokenInput').value.trim(); }
+    function setToken(token) { document.getElementById('tokenInput').value = token; updateTokenBadge(); }
+    function updateTokenBadge() {
+      const b = document.getElementById('tokenBadge');
+      if (getToken()) { b.textContent = '✓ 已设置'; b.className = 'token-badge ok'; }
+      else { b.textContent = '未设置'; b.className = 'token-badge no'; }
+    }
+
+    function highlightJson(json) {
+      if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
+      return json
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
+        .replace(/: "([^"]*)"/g,': <span class="str">"$1"</span>')
+        .replace(/: (\d+)/g,': <span class="num">$1</span>');
+    }
+
+    function showResponse(prefix, code, data, ms) {
+      ensureCardOpen(prefix);
+      const area = document.getElementById('resp-' + prefix);
+      if (area) {
+        area.classList.add('show');
+        // 滚动到可视区域
+        area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      const codeEl = document.getElementById(prefix + '-code');
+      if (codeEl) {
+        codeEl.textContent = code === 0 ? 'ERROR' : ('HTTP ' + code);
+        codeEl.className = 'resp-code-badge ' +
+          (code>=200&&code<300?'rc-2xx':code===400?'rc-400':code===401?'rc-401':code===404?'rc-404':'rc-500');
+      }
+      const timeEl = document.getElementById(prefix + '-time');
+      if (timeEl) timeEl.textContent = '⏱ ' + (ms || '?') + 'ms';
+      const bodyEl = document.getElementById(prefix + '-body');
+      if (bodyEl) bodyEl.innerHTML = highlightJson(data);
+    }
+
+    function closeResp(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('show');
+    }
+
+    async function api(method, url, body, needToken) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (needToken) {
+        const token = getToken();
+        if (!token) return { code: 0, message: '请先设置Token，请先登录获取Token', data: null };
+        opts.headers['Authorization'] = 'Bearer ' + token;
+      }
+      if (body) opts.body = JSON.stringify(body);
+      const start = Date.now();
+      try {
+        const res = await fetch(url, opts);
+        const json = await res.json();
+        return { code: json.code, message: json.message, data: json.data, ms: Date.now() - start };
+      } catch (err) {
+        return { code: -1, message: '无法连接服务器！请确认已执行 npm start 启动后端服务', data: null, ms: Date.now() - start };
+      }
+    }
+
+    // 封装：按钮loading + 调接口 + 显示结果
+    async function callApi(btnSelector, prefix, method, url, getBody, needToken) {
+      const btn = document.querySelector(btnSelector);
+      setBtnLoading(btn, true);
+      try {
+        const body = getBody ? getBody() : null;
+        // 参数为空校验
+        if (method !== 'GET' && body && Object.values(body).some(v => v === '' || v === undefined)) {
+          showResponse(prefix, 400, { code: 400, message: '请填写所有必填字段', data: null }, 0);
+          return;
+        }
+        const r = await api(method, url, body, needToken);
+        showResponse(prefix, r.code, r, r.ms);
+        return r;
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    }
+
+    // ========== 用户接口 ==========
+    async function doRegister() {
+      const r = await callApi('.endpoint-card:first-of-type .btn.send', 'reg', 'POST', '/user/register', () => ({
+        username: document.getElementById('reg_user').value.trim(),
+        password: document.getElementById('reg_pwd').value
+      }), false);
+    }
+    async function doLogin() {
+      const r = await callApi('.endpoint-card:nth-of-type(2) .btn.send', 'login', 'POST', '/user/login', () => ({
+        username: document.getElementById('login_user').value.trim(),
+        password: document.getElementById('login_pwd').value
+      }), false);
+      if (r && r.code === 200 && r.data && r.data.token) {
+        setToken(r.data.token);
+        document.getElementById('info_id').value = r.data.id;
+      }
+    }
+    async function doGetUserInfo() {
+      await callApi('.endpoint-card:nth-of-type(3) .btn.send', 'info', 'GET', '/user/info?id=' + document.getElementById('info_id').value, null, true);
+    }
+    async function doDeleteUser() {
+      const id = document.getElementById('del_user_id').value;
+      if (!id) { alert('请输入要删除的用户ID'); return; }
+      if (!confirm('⚠️ 确定永久删除用户 ID=' + id + '？此操作不可撤销！')) return;
+      await callApi('.endpoint-card:nth-of-type(4) .btn.danger', 'del-user', 'DELETE', '/user/delete', () => ({ id: parseInt(id) }), true);
+    }
+
+    // ========== 宠物接口 ==========
+    async function doAddPet() {
+      const r = await callApi('#tab-pet .endpoint-card:first-of-type .btn.send', 'add-pet', 'POST', '/pet/add', () => ({
+        category: document.getElementById('pet_cat').value.trim(),
+        name: document.getElementById('pet_name').value.trim(),
+        sex: document.getElementById('pet_sex').value.trim(),
+        age: parseInt(document.getElementById('pet_age').value)
+      }), true);
+      // 添加成功后清空表单，方便继续输入
+      if (r && r.code === 200) {
+        document.getElementById('pet_cat').value = '';
+        document.getElementById('pet_name').value = '';
+        document.getElementById('pet_sex').value = '';
+        document.getElementById('pet_age').value = '';
+        document.getElementById('pet_cat').focus();
+      }
+    }
+    async function doPetList() {
+      const r = await callApi('#tab-pet .endpoint-card:nth-of-type(2) .btn.send', 'pet-list', 'GET', '/pet/list', null, true);
+      const wrap = document.getElementById('petTableWrap');
+      if (r && r.code === 200 && Array.isArray(r.data)) {
+        document.getElementById('petTableBody').innerHTML = r.data.map(p =>
+          `<tr><td><strong>#${p.id}</strong></td><td>${p.category}</td><td>${p.name}</td><td>${p.sex}</td><td>${p.age}个月</td><td>${p.created_at||'-'}</td></tr>`
+        ).join('');
+        wrap.classList.add('show');
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else { wrap.classList.remove('show'); }
+    }
+    async function doPetSearch() {
+      const kw = document.getElementById('search_key').value.trim();
+      if (!kw) { alert('请输入搜索关键字'); return; }
+      await callApi('#tab-pet .endpoint-card:nth-of-type(3) .btn.send', 'pet-search', 'GET', '/pet/search?keyword=' + encodeURIComponent(kw), null, true);
+    }
+    async function doDeletePet() {
+      const id = document.getElementById('del_pet_id').value;
+      if (!id) { alert('请输入要删除的宠物ID'); return; }
+      if (!confirm('⚠️ 确定永久删除宠物 ID=' + id + '？此操作不可撤销！')) return;
+      await callApi('#tab-pet .endpoint-card:nth-of-type(4) .btn.danger', 'del-pet', 'DELETE', '/pet/delete', () => ({ id: parseInt(id) }), true);
+    }
+
+    // ========== 初始化 ==========
+    document.getElementById('tokenInput').addEventListener('input', updateTokenBadge);
+    fetch('/user/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:'__ping__',password:''}) })
+      .then(r => r.json()).then(() => {
+        document.getElementById('serverStatus').innerHTML = '<span class="status-dot" style="display:inline-block;margin-right:8px;"></span> 服务就绪 · 端口 3000';
+      }).catch(() => {
+        document.getElementById('serverStatus').innerHTML = '⚠️ 无法连接服务器，请先执行 npm start';
+      });
+  </script>
+</body>
+</html>
