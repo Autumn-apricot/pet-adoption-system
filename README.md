@@ -348,7 +348,13 @@ pet/
 
 ## 截图
 
-运行 `npm run dev` 后可按 [`docs/screenshots/README.md`](docs/screenshots/README.md) 的说明补充截图。
+| 前台 · 宠物列表 | 前台 · 领养申请 |
+| --- | --- |
+| ![宠物列表](docs/screenshots/01-gallery.png) | ![领养申请](docs/screenshots/02-apply.png) |
+
+| 后台 · 数据看板 | 后台 · 领养审核 |
+| --- | --- |
+| ![数据看板](docs/screenshots/03-dashboard.png) | ![领养审核](docs/screenshots/04-review.png) |
 
 ## 说明
 
