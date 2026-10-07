@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import { useUserStore } from '@/stores/user';
 
 const routes = [
@@ -75,6 +76,9 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } };
   }
   if (to.meta.requiresAdmin && !store.isAdmin) {
+    // 未登录走上面的登录页分支；这里处理「已登录但是普通用户」的情况：
+    // 明确告知原因，避免「页面被弹回但不知道为什么」
+    ElMessage.warning('管理后台仅管理员可访问，当前账号没有权限');
     return { name: 'gallery' };
   }
   if (to.name === 'login' && store.isLoggedIn) {
