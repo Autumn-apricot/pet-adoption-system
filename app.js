@@ -1,120 +1,124 @@
 /**
- * 宠物领养管理系统 — 应用入口文件
+ * 宠物领养管理系统 — 应用入口
  *
- * 功能模块：
- * - 用户管理（注册/登录/获取信息）
- * - 宠物管理（增删查）
- * - 中间件（cors跨域、body解析、日志记录、JWT认证）
- * - 静态资源托管
- * - 统一错误处理
+ * 职责：装配中间件、挂载路由、托管静态资源，并导出 app 供测试使用。
+ * 业务逻辑都在 router / models 层，这里保持尽量薄。
  */
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const path = require('path');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
 
-// 导入路由模块
-const userRouter = require('./router/user');
-const petRouter = require('./router/pet');
+const config = require('./config');
+const db = require('./db/db');
+const apiRouter = require('./router');
+const swaggerSpec = require('./docs/swagger');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { ok } = require('./utils/response');
 
-// 创建Express应用实例
 const app = express();
 
-// 设置服务器端口
-const PORT = 3000;
+app.disable('x-powered-by');
 
-// ==================== 中间件配置 ====================
-
-/**
- * 1. CORS跨域中间件
- * 解决前后端分离开发时的跨域请求问题
- */
+// ==================== 中间件 ====================
+// swagger-ui 需要内联脚本样式，故关闭 CSP
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
 
-/**
- * 2. Body-parser中间件
- * 解析POST请求中的JSON格式请求体数据
- */
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+if (config.env !== 'test') {
+  app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
+}
 
-/**
- * 3. 自定义日志中间件
- * 记录每个请求的URL、请求方式和请求时间
- */
-app.use((req, res, next) => {
-  const now = new Date();
-  const timeStr = now.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-  console.log(`[${timeStr}] ${req.method} ${req.url}`);
-  next();
-});
+// ==================== 健康检查 ====================
+app.get('/health', (req, res) => ok(res, {
+  status: 'up',
+  env: config.env,
+  uptime: Math.round(process.uptime()),
+  timestamp: new Date().toISOString(),
+}));
 
-// ==================== 路由配置 ====================
+// ==================== 接口文档 ====================
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: '宠物领养管理系统 API 文档',
+}));
+app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
-// 用户相关路由
-app.use('/user', userRouter);
-
-// 宠物相关路由
-app.use('/pet', petRouter);
+// ==================== 业务路由 ====================
+app.use('/api', apiRouter);
 
 // ==================== 静态资源 ====================
+const publicDir = path.join(__dirname, 'public');
+const spaDir = path.join(__dirname, 'web', 'dist');
+const spaIndex = path.join(spaDir, 'index.html');
+// 前端执行过 npm run build 后，这里就能直接托管构建产物（Docker 镜像即走这条路径）
+const spaBuilt = fs.existsSync(spaIndex);
 
-/**
- * 托管public目录下的静态资源
- * 可通过 http://localhost:3000/xxx 直接访问public目录中的文件
- */
-app.use(express.static(path.join(__dirname, 'public')));
+if (spaBuilt) {
+  app.use(express.static(spaDir));
+}
 
-/**
- * 根路由
- * 返回静态首页（API测试界面）
- */
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// 后端自带的接口导航页
+app.use(express.static(publicDir));
+app.get('/api-guide', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
-// ==================== 错误处理 ====================
+if (spaBuilt) {
+  // history 模式前端路由兜底：排除 /api、/api-docs、/health、/api-guide 这些后端路径
+  app.get(/^\/(?!api(?:[/?]|$)|api-docs|api-guide|health).*/, (req, res) => res.sendFile(spaIndex));
+} else {
+  app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+}
 
-/**
- * 统一错误处理中间件
- * 捕获异常并返回规范的错误信息格式 {code, message, data}
- * 必须放在所有路由和中间件之后
- */
-app.use((err, req, res, next) => {
-  console.error('服务器错误:', err.stack);
+// ==================== 兜底 ====================
+app.use(notFound);
+app.use(errorHandler);
 
-  // 区分不同类型的错误，返回不同的状态码
-  let code = 500;
-  let message = '服务器内部错误';
-
-  if (err.type === 'entity.parse.failed') {
-    code = 400;
-    message = 'JSON格式解析失败，请检查请求体格式';
-  } else if (err.message) {
-    message = err.message;
+// ==================== 启动 ====================
+async function bootstrap() {
+  try {
+    await db.ping();
+    console.log(`[数据库] 连接成功 -> ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}`);
+  } catch (err) {
+    console.error('\n[数据库] 连接失败：' + err.message);
+    console.error('请检查：');
+    console.error('  1. 是否已复制 .env.example 为 .env 并填好数据库账号密码');
+    console.error('  2. MySQL 服务是否已启动');
+    console.error('  3. 是否已执行 npm run db:init 初始化数据库\n');
+    process.exit(1);
   }
 
-  // 统一响应格式
-  res.status(500).json({
-    code: code,
-    message: message,
-    data: null
+  const server = app.listen(config.port, () => {
+    console.log('========================================');
+    console.log('  宠物领养管理系统已启动');
+    console.log(`  访问地址: http://localhost:${config.port}`);
+    console.log(`  接口文档: http://localhost:${config.port}/api-docs`);
+    if (spaBuilt) {
+      console.log('  前端页面: 已托管 web/dist 构建产物');
+    } else {
+      console.log('  前端页面: 未构建，请到 web/ 目录执行 npm install && npm run dev');
+    }
+    console.log('========================================');
   });
-});
 
-// ==================== 启动服务器 ====================
+  const shutdown = async (signal) => {
+    console.log(`\n收到 ${signal}，正在优雅关闭...`);
+    server.close(async () => {
+      await db.close();
+      process.exit(0);
+    });
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-app.listen(PORT, () => {
-  console.log('========================================');
-  console.log(`  宠物领养管理系统服务器启动成功！`);
-  console.log(`  访问地址: http://localhost:${PORT}`);
-  console.log(`  接口文档: http://localhost:${PORT}/`);
-  console.log('========================================');
-});
+  return server;
+}
+
+if (require.main === module) {
+  bootstrap();
+}
+
+module.exports = { app, bootstrap };

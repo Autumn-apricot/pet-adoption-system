@@ -1,0 +1,31 @@
+# 依赖与构建产物（镜像内会重新安装与构建）
+node_modules/
+web/node_modules/
+web/dist/
+dist/
+
+# 环境变量：绝不进镜像
+.env
+.env.*
+!.env.example
+
+# 测试与覆盖率
+coverage/
+tests/
+
+# 版本控制与编辑器
+.git/
+.gitignore
+.vscode/
+.idea/
+*.iml
+
+# 日志与系统文件
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 文档与设计稿（运行镜像用不到）
+DESIGN.md
+docs/screenshots/
